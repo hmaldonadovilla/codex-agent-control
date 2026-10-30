@@ -54,7 +54,7 @@ codex mcp add agent_desk -- wsl.exe -d Ubuntu `
 Use the actual CLI executable if `codex` is not on PATH. Paths/credential directory
 are local configuration, not repository settings. Reopen or refresh the **same**
 desktop chats if their currently loaded tool list does not contain Agent Desk.
-See the official [Codex MCP documentation](https://learn.chatgpt.com/docs/mcp).
+See the official [Codex CLI reference](https://learn.chatgpt.com/docs/cli/reference).
 
 ## Tools
 
