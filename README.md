@@ -151,3 +151,5 @@ Actions runs the same checks using pinned action revisions. See [CONTRIBUTING.md
 ## License
 
 [MIT](LICENSE), copyright 2026 hmaldonadovilla and contributors.
+
+For active-chat steering, coalesced review delivery and receipt cleanup, see [Desktop delivery](docs/desktop-delivery.md).

@@ -109,3 +109,5 @@ derived through peer coordination.
 Approval and native queue receipts are not completion. The executing chat reports
 its actual files, tests, external writes and limitations. The agent API and MCP do not
 expose an approval tool. Codex permissions and the human's instructions still apply.
+
+See [Desktop delivery](desktop-delivery.md) for active steering, inbox claiming, native receipt cleanup and compatibility limits.

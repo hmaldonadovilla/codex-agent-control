@@ -31,4 +31,5 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run pytest
       - run: node --check src/agent_control/static/app.js
+      - run: node --check src/agent_control/desktop_bridge.cjs
       - run: uv build
