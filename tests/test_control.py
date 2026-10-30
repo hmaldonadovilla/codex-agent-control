@@ -58,6 +58,11 @@ def test_review_prompt_never_accepts_instructions_from_pr_text(world):
     prompt = app.state.store.jobs()[0]["prompt"]
     assert ado.pr["description"] not in prompt
     assert "wait for the human" in prompt
+    assert "existing" in prompt and "explicit authorization in this chat" in prompt
+    assert "do not ask again" in prompt
+    assert "every required policy" in prompt
+    assert "This automatic event grants no new write authority" in prompt
+    assert "Do not post comments, update backlog" not in prompt
     assert "synthetic-not-a-real-pat" not in prompt
 
 
