@@ -73,3 +73,5 @@ not a replacement for a working native desktop queue connection.
 The project does not implement a cloud review farm, multi-tenant isolation, durable
 offline cloud ingress, production deployment approval or a direct OpenAI API client.
 It does not infer that local test acceptance proves cloud/production readiness.
+
+See [Desktop delivery](desktop-delivery.md) for active steering, inbox claiming, native receipt cleanup and compatibility limits.

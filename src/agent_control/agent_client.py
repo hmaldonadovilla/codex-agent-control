@@ -13,6 +13,7 @@ def main():
     parser = argparse.ArgumentParser(description="Agent Desk report and coordination client")
     parser.add_argument("--credentials", type=Path, required=True)
     commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("next-run")
     inspect = commands.add_parser("get-run")
     inspect.add_argument("--job", required=True)
     report = commands.add_parser("report")
@@ -45,7 +46,9 @@ def main():
     ):
         parser.error("Agent reports may be sent only to the local controller")
     method = "POST"
-    if args.command == "get-run":
+    if args.command == "next-run":
+        path, body = "inbox/next", {}
+    elif args.command == "get-run":
         from uuid import UUID
 
         method, path, body = "GET", "runs/" + str(UUID(args.job)), None

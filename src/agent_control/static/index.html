@@ -169,6 +169,8 @@
           <p class="muted">This optional connection delivers to existing desktop chats. Persistent Agent Desk conversations use the installed Codex sign-in directly; use Test agent on their agent cards.</p>
           <form id="codex-form"><label>Codex executable<input name="command" required
                 placeholder="codex or an absolute executable path"></label>
+            <label>Desktop bridge Node executable (optional)<input name="node_command"
+                placeholder="Auto-detect Node.js; use a Windows node.exe path from WSL"></label>
             <div class="button-row"><button class="primary">Save</button><button type="button" class="secondary"
                 id="test-codex">Test connection</button></div>
           </form>
