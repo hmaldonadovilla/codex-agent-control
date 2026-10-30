@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Respect explicit standing human authorization in review wake-ups; retain default permission boundaries and mandatory review/CI/policy checks.
+
 - Steer relevant messages into existing active desktop chats through a versioned native IPC adapter; retain queue fallback for idle chats.
 - Coalesce outstanding review notifications, expose authenticated inbox claiming, retire stale requests and withdraw owned native queue receipts.
 - Preserve completed assessments when delayed duplicate reports arrive.
