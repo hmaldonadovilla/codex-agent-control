@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "codex-agent-control"
+version = "0.1.0"
+description = "Local, approval-driven coordination for Codex chats and Azure DevOps"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "hmaldonadovilla"}]
+requires-python = ">=3.12,<3.13"
+dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.34,<1", "httpx>=0.28,<1"]
+
+[project.urls]
+Homepage = "https://github.com/hmaldonadovilla/codex-agent-control"
+Documentation = "https://github.com/hmaldonadovilla/codex-agent-control#readme"
+Issues = "https://github.com/hmaldonadovilla/codex-agent-control/issues"
+
+[project.scripts]
+agent-control = "agent_control.cli:main"
+agent-control-ingress = "agent_control.ingress:main"
+
+[dependency-groups]
+dev = ["pytest>=8.3,<10", "ruff>=0.11,<1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_control"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+# SQL statements and fixed protocol messages are kept intact; Ruff formats Python.
+ignore = ["E501"]

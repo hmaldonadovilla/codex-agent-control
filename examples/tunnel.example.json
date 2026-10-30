@@ -1,0 +1,6 @@
+{
+  "id": "replace-with-full-tunnel-id.cluster",
+  "url": "https://replace-with-port-host-8769.cluster.devtunnels.ms",
+  "port": 8769,
+  "executable": "/absolute/path/to/devtunnel"
+}

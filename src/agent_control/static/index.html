@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="control-token" content="__CONTROL_TOKEN__">
+  <title>Agent Desk · Local control</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="Agent Desk home"><span class="brand-mark">a<span>·</span></span>
+      <div>Agent Desk<small>YOUR LOCAL CONTROL ROOM</small></div>
+    </a>
+    <div class="nav-label">WORKSPACE</div>
+    <nav aria-label="Main navigation">
+      <button data-view="overview" class="selected"><span>◈</span> Overview</button>
+      <button data-view="agents"><span>◎</span> Agents <b id="nav-agent-count">0</b></button>
+      <button data-view="reviews"><span>▤</span> Review queue <b id="nav-job-count">0</b></button>
+      <button data-view="approvals"><span>◇</span> Approvals <b id="nav-approval-count">0</b></button>
+      <button data-view="connections"><span>⇄</span> Connections</button>
+      <button data-view="activity"><span>◷</span> Activity</button>
+    </nav>
+    <div class="sidebar-footer"><span class="dot"></span> Local workstation<small>Private state · Explicit
+        approvals</small><code id="workspace-label"></code></div>
+  </aside>
+  <main>
+    <header>
+      <div><span class="eyebrow">WORKSPACE / <span id="breadcrumb">OVERVIEW</span></span>
+        <h1 id="page-title">A clear view of your agents.</h1>
+        <p id="page-subtitle">Keep development moving. Keep the decisions yours.</p>
+      </div>
+      <div class="header-actions"><span class="pill" id="monitor-label">Automation paused</span><button
+          id="monitor-toggle" class="secondary">Enable automation</button></div>
+    </header>
+    <div id="notice" class="notice" role="status"></div>
+    <section id="overview" class="view">
+      <div class="stats">
+        <article><span>Registered agents</span><strong id="stat-agents">0</strong><small>Extend the team as work
+            grows</small></article>
+        <article><span>Review runs</span><strong id="stat-jobs">0</strong><small>Tracked by exact PR revision</small>
+        </article>
+        <article><span>Awaiting your decision</span><strong id="stat-approvals">0</strong><small>External actions stay
+            behind approval</small></article>
+        <article><span>Needs attention</span><strong id="stat-blocked">0</strong><small>Connection or delivery
+            checks</small></article>
+      </div>
+      <div class="section-heading">
+        <div>
+          <h2>Your agents</h2>
+          <p>Different responsibilities. One coordinated workspace.</p>
+        </div><button class="primary" data-action="add-agent">＋ Add agent</button>
+      </div>
+      <div id="overview-agents" class="agent-grid"></div>
+      <div class="columns">
+        <section class="panel">
+          <div class="panel-title">
+            <h2>From CI to your decision</h2><span class="subtle">REVIEW FLOW</span>
+          </div>
+          <ol class="flow">
+            <li><b>01</b>
+              <div><strong>ADO sends an event</strong>
+                <p>A new PR or completed build starts an eligibility check.</p>
+              </div>
+            </li>
+            <li><b>02</b>
+              <div><strong>Verify the current revision</strong>
+                <p>Exclude your authors. Check required CI and deduplicate.</p>
+              </div>
+            </li>
+            <li><b>03</b>
+              <div><strong>Continue the reviewer conversation</strong>
+                <p>Run the review in the same agent session and its isolated worktree.</p>
+              </div>
+            </li>
+            <li><b>04</b>
+              <div><strong>You decide what happens next</strong>
+                <p>Approve comments, backlog changes or code work.</p>
+              </div>
+            </li>
+          </ol>
+        </section>
+        <section class="panel">
+          <div class="panel-title">
+            <h2>Recent activity</h2><button class="text-button" data-view="activity">View all →</button>
+          </div>
+          <div id="recent-activity"></div>
+        </section>
+      </div>
+    </section>
+    <section id="agents" class="view hidden">
+      <div class="section-heading">
+        <div>
+          <h2>An extensible team</h2>
+          <p>Add reviewers, developers, documentation or specialist agents without changing the app.</p>
+        </div><button class="primary" data-action="add-agent">＋ Add agent</button>
+      </div>
+      <div id="all-agents" class="agent-grid"></div>
+      <section class="panel">
+        <h2>Send a coordination message</h2>
+        <p class="muted">Messages share context. They do not grant approval for code or external changes.</p>
+        <form id="message-form"><label>To agent<select name="target_agent_id" class="agent-select"
+              required></select></label><label>Message<textarea name="body" rows="4" required
+              placeholder="PRs, changed interfaces, required action and expected acknowledgement…"></textarea></label><button
+            class="primary">Queue message</button></form>
+      </section>
+      <section class="panel">
+        <h2>Create an isolated worktree</h2>
+        <p class="muted">Creates a new checkout. Existing chat files and uncommitted work are preserved. The chat must
+          explicitly adopt the returned path.</p>
+        <form id="worktree-form" class="form-grid"><label>Agent<select name="agent_id" class="agent-select"
+              required></select></label><label>Worktree name<input name="name" required pattern="[a-z][a-z0-9-]*"
+              placeholder="review-orchestrator"></label><label>Existing repository path<input name="repository_path"
+              required placeholder="/home/you/local-repos/repository"></label><label>Local Git reference<input
+              name="ref" value="origin/main" required></label><button class="secondary">Create worktree</button></form>
+        <pre id="worktree-result" class="hidden"></pre>
+      </section>
+    </section>
+    <section id="reviews" class="view hidden">
+      <div class="section-heading">
+        <div>
+          <h2>Review and dispatch queue</h2>
+          <p>Queued in Codex means delivered to the chat, not a completed review.</p>
+        </div>
+        <div class="button-row"><button id="reconcile" class="secondary">Check ADO now</button><button id="dispatch"
+            class="primary">Send next queued run</button></div>
+      </div>
+      <div id="jobs"></div>
+    </section>
+    <section id="approvals" class="view hidden">
+      <div class="section-heading">
+        <div>
+          <h2>Your decisions</h2>
+          <p>Approve the exact proposed action. Read-only agents prepare a manual handoff; connected desktop agents receive a queued instruction. Execution is reported separately.</p>
+        </div><button class="primary" id="new-proposal">＋ New proposal</button>
+      </div>
+      <div id="proposals"></div>
+    </section>
+    <section id="connections" class="view hidden">
+      <div class="columns">
+        <section class="panel">
+          <div class="panel-title">
+            <h2>Azure DevOps</h2><span class="pill" id="ado-status">Not configured</span>
+          </div>
+          <p class="muted">Start with read access to code, builds and policies. The app never posts comments or updates
+            backlog directly.</p>
+          <form id="ado-form"><label>Organization<input name="organization" required
+                placeholder="your-organization"></label><label>Project<input name="project" required
+                placeholder="Your project"></label><label>Personal access token<input name="pat" type="password"
+                autocomplete="new-password"
+                placeholder="Leave blank to keep the saved credential"></label><label>Repository names or IDs
+              <small>optional, comma separated</small><input name="repositories"
+                placeholder="Blank includes all project repositories"></label><label>Additional excluded author IDs
+              <small>comma separated</small><input name="excluded_authors"></label><label class="check"><input
+                name="exclude_own" type="checkbox" checked> Exclude my own PRs</label><label class="check"><input
+                name="enabled" type="checkbox"> Enable this connection</label>
+            <div class="button-row"><button class="primary">Save connection</button><button type="button"
+                class="secondary" id="test-ado">Test & identify my account</button></div>
+          </form>
+          <p id="ado-result" class="result"></p>
+        </section>
+        <section class="panel">
+          <div class="panel-title">
+            <h2>Desktop chat delivery</h2><span class="pill" id="codex-status">Not tested</span>
+          </div>
+          <p class="muted">This optional connection delivers to existing desktop chats. Persistent Agent Desk conversations use the installed Codex sign-in directly; use Test agent on their agent cards.</p>
+          <form id="codex-form"><label>Codex executable<input name="command" required
+                placeholder="codex or an absolute executable path"></label>
+            <div class="button-row"><button class="primary">Save</button><button type="button" class="secondary"
+                id="test-codex">Test connection</button></div>
+          </form>
+          <p id="codex-result" class="result"></p>
+          <div class="callout"><strong>Existing chats keep their own permissions.</strong>
+            <p>The controller queues scoped instructions. Codex enforces its existing execution policies; the approval
+              queue does not replace the chat's permissions.</p>
+          </div>
+          <h3>Event delivery</h3>
+          <p><span id="tunnel-status" class="pill">Tunnel not configured</span></p>
+          <p class="muted" id="tunnel-url"></p>
+          <p class="muted" id="event-counts"></p>
+          <p id="subscription-status" class="muted"></p><button class="secondary" id="connect-subscription">Connect successful ADO build events</button>
+          <p class="muted">ADO webhooks need an HTTPS endpoint. Keep the control interface local and route only the
+            webhook path through your chosen ingress. A periodic ADO reconciliation also catches missed events while
+            this app runs.</p><button class="secondary" id="webhook-details">Show webhook setup</button>
+          <pre id="webhook-result" class="hidden secret-output"></pre>
+          <form id="poll-form"><label class="check"><input name="reconcile_periodically" type="checkbox"> Enable optional local ADO checks</label><p class="muted">Default: react to webhook events. These optional HTTP checks do not invoke Codex.</p><label>Reconciliation interval in seconds<input name="poll_seconds" type="number"
+                min="60" max="86400" required></label><label>Wait after CI passes, in seconds<input name="review_grace_seconds" type="number" min="0" max="300" required></label><p class="muted">Default: 30 seconds. Before messaging the chat, check that the PR is still open. This is a one-time wait for each review, not polling.</p><button class="secondary">Save review timing</button></form>
+        </section>
+      </div>
+    </section>
+    <section id="activity" class="view hidden">
+      <section class="panel">
+        <div class="panel-title">
+          <h2>Activity log</h2><span class="subtle">EVENTS · DISPATCH · APPROVALS</span>
+        </div>
+        <div id="activity-list"></div>
+      </section>
+    </section>
+    <footer>Agent Desk <span>LOCAL FIRST · HUMAN CONTROLLED</span><span id="last-refreshed"></span></footer>
+  </main>
+  <dialog id="agent-dialog">
+    <form id="agent-form">
+      <div class="dialog-heading">
+        <div><span class="eyebrow">AGENT SETTINGS</span>
+          <h2>Configure an agent</h2>
+        </div><button type="button" class="close" data-close="agent-dialog" aria-label="Close">×</button>
+      </div>
+      <div class="form-grid"><label>Agent ID<input name="id" required pattern="[a-z][a-z0-9-]*"
+            placeholder="security-review"></label><label>Display name<input name="name" required
+            placeholder="Security reviewer"></label><label>Role<input name="role" required
+            placeholder="reviewer, developer, documentation…"></label><label>Linked desktop chat UUID<input name="thread_id"
+            placeholder="Keep an existing chat linked for handoffs"></label><input type="hidden" name="delivery" value="desktop"><input type="hidden" name="model"></div><label>Operating instructions<textarea name="instructions"
+          rows="4" placeholder="Scope, responsibilities and escalation rules…"></textarea></label>
+      <div class="form-grid"><label>Repository scope <small>optional, comma separated</small><input
+            name="repositories"></label><label>Allowed peer agent IDs <small>comma separated</small><input
+            name="peers"></label></div><label>Workspaces <small>one per line: repository | absolute
+          path</small><textarea name="workspaces" rows="3"
+          placeholder="repository | /home/you/local-repos/.worktrees/review"></textarea></label><label
+        class="check"><input name="review_on_ci" type="checkbox"> Receive CI-qualified PR reviews</label><label
+        class="check"><input name="enabled" type="checkbox"> Enable this agent</label>
+      <div class="dialog-footer"><button type="button" class="secondary"
+          data-close="agent-dialog">Cancel</button><button class="primary">Save agent</button></div>
+    </form>
+  </dialog>
+  <dialog id="proposal-dialog">
+    <form id="proposal-form">
+      <div class="dialog-heading">
+        <div><span class="eyebrow">APPROVAL REQUEST</span>
+          <h2>Prepare a concrete action</h2>
+        </div><button type="button" class="close" data-close="proposal-dialog" aria-label="Close">×</button>
+      </div>
+      <div class="form-grid"><label>Origin agent<select name="agent_id"
+            class="agent-select"></select></label><label>Execute with<select name="target_agent_id"
+            class="agent-select"></select></label><label>Action<select name="kind">
+            <option value="post_comments">Post PR comments</option>
+            <option value="update_backlog">Update backlog</option>
+            <option value="adjust_code">Adjust code</option>
+            <option value="coordinate">Coordinate work</option>
+          </select></label><label>Related review run<select name="job_id" id="proposal-job"></select></label></div>
+      <label>Title<input name="title" required></label><label>Exact action and content<textarea name="body" rows="8"
+          required
+          placeholder="Include the exact comments, backlog changes or code scope you want approved."></textarea></label>
+      <div class="dialog-footer"><button type="button" class="secondary"
+          data-close="proposal-dialog">Cancel</button><button class="primary">Create approval request</button></div>
+    </form>
+  </dialog>
+  <dialog id="run-dialog">
+    <div class="dialog-heading">
+      <h2 id="run-title">Review run</h2><button class="close" data-close="run-dialog" aria-label="Close">×</button>
+    </div>
+    <div id="run-content"></div>
+  </dialog>
+  <dialog id="conversation-dialog">
+    <div class="dialog-heading"><h2 id="conversation-title">Agent conversation</h2><button class="close" data-close="conversation-dialog" aria-label="Close">×</button></div>
+    <p id="conversation-info" class="muted"></p><div id="conversation-messages"></div>
+    <button type="button" id="refresh-conversation" class="secondary">Refresh conversation</button>
+    <form id="conversation-form"><label>Message to this agent<textarea name="body" rows="3" required></textarea></label><button class="primary">Queue message</button></form>
+  </dialog>
+  <div id="toast" role="status"></div>
+</body>
+
+</html>
