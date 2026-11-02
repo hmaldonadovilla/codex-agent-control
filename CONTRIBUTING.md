@@ -7,6 +7,7 @@ filesystem. The web interface is buildless HTML, CSS and JavaScript.
 uv sync --frozen
 uv run ruff check .
 uv run ruff format --check .
+uv run playwright install chromium
 uv run pytest
 node --check src/agent_control/static/app.js
 uv build

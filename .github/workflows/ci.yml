@@ -29,6 +29,7 @@ jobs:
       - run: uv sync --frozen
       - run: uv run ruff check .
       - run: uv run ruff format --check .
+      - run: uv run playwright install --with-deps chromium
       - run: uv run pytest
       - run: node --check src/agent_control/static/app.js
       - run: node --check src/agent_control/desktop_bridge.cjs

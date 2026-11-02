@@ -3,6 +3,7 @@ const $ = (q, root = document) => root.querySelector(q);
 const $$ = (q, root = document) => [...root.querySelectorAll(q)];
 const token = $('meta[name="control-token"]').content;
 let state, currentView = "overview", toastTimer, conversationAgent;
+const agentCardVersions = new Map();
 const list = value => value.split(",").map(x => x.trim()).filter(Boolean);
 const safe = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
 const time = value => new Date(value).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
@@ -15,8 +16,35 @@ async function action(work) { try { await work(); await refresh(); } catch (erro
 const titles = {overview:["A clear view of your agents.","Keep development moving. Keep the decisions yours."],agents:["The right agent for each job.","Configure responsibilities, conversations and collaboration."],reviews:["Every review, accounted for.","Follow a pull request from CI qualification to a reported assessment."],approvals:["The next move is yours.","Approve concrete actions, with an audit trail."],connections:["Connect your workflow.","Azure DevOps events in. Coordinated Codex work out."],activity:["A record of what happened.","Events, decisions and delivery outcomes in one place."]};
 function view(name) { currentView = name; $$(".view").forEach(el => el.classList.toggle("hidden", el.id !== name)); $$('nav button').forEach(el => el.classList.toggle("selected",el.dataset.view === name)); $("#breadcrumb").textContent = name.toUpperCase(); $("#page-title").textContent = titles[name][0]; $("#page-subtitle").textContent = titles[name][1]; }
 function empty(title, detail) { return `<div class="empty"><strong>${safe(title)}</strong>${safe(detail)}</div>`; }
-function agentCards() {
-  return state.agents.map(a => `<article class="agent-card"><div class="agent-top"><div class="avatar">${safe(a.name[0].toLowerCase())}</div><div><h3>${safe(a.name)}</h3><small>${safe(a.role)} · ${a.delivery === "owned" ? "Persistent Agent Desk conversation" : "Linked desktop chat"}</small></div><span class="pill ${a.enabled ? "good" : ""}">${a.enabled ? "Enabled" : "Paused"}</span></div><p>${safe(a.instructions.split("Agent Control reporting:")[0] || (a.review_on_ci ? "Reviews eligible external PRs after CI passes. Proposes changes for your approval." : "Develops within its assigned scope and coordinates integration changes with peers."))}</p><div class="agent-meta"><span>${a.review_on_ci ? "◈ CI review trigger" : "◇ Manual / peer messages"}</span><span>${a.workspaces.length} workspace${a.workspaces.length === 1 ? "" : "s"}</span><span>${a.peers.length} peer${a.peers.length === 1 ? "" : "s"}</span></div><div class="agent-bottom"><code title="${safe(a.thread_id)}">${a.delivery === "owned" ? "One conversation across all runs" : safe(a.thread_id || "Chat not linked")}</code><div>${a.delivery === "desktop" ? `<button class="text-button" data-bootstrap="${safe(a.id)}">Connect reporting</button>` : ""}<a class="text-button" href="codex://threads/${safe(a.thread_id)}">Open desktop chat</a><button class="text-button" data-test-agent="${safe(a.id)}">Test agent</button><button class="text-button" data-edit-agent="${safe(a.id)}">Configure →</button></div></div></article>`).join("") || empty("Build your agent team","Add a reviewer, a developer or a specialist. Every role is configurable.");
+function agentCards(container) {
+  const expanded = new Set($$("details[data-instructions-agent][open]", $(container))
+    .map(panel => panel.dataset.instructionsAgent));
+  return state.agents.map(a => {
+    const rendered = state.agent_instruction_html?.[a.id] ??
+      `<p>${safe(a.instructions.split("Agent Control reporting:")[0] || "No instructions configured.")}</p>`;
+    return `<article class="agent-card">
+      <div class="agent-top">
+        <div class="avatar">${safe(a.name[0].toLowerCase())}</div>
+        <div><h3>${safe(a.name)}</h3><small>${safe(a.role)} · ${a.delivery === "owned" ? "Persistent Agent Desk conversation" : "Linked desktop chat"}</small></div>
+        <span class="pill ${a.enabled ? "good" : ""}">${a.enabled ? "Enabled" : "Paused"}</span>
+      </div>
+      <details class="instructions-panel" data-instructions-agent="${safe(a.id)}"${expanded.has(a.id) ? " open" : ""}>
+        <summary>Read instructions <span class="instruction-format">Markdown</span></summary>
+        <div class="markdown-body" tabindex="0" aria-label="${safe(a.name)} instructions">${rendered}</div>
+      </details>
+      <div class="agent-meta"><span>${a.review_on_ci ? "◈ CI review trigger" : "◇ Manual / peer messages"}</span><span>${a.workspaces.length} workspace${a.workspaces.length === 1 ? "" : "s"}</span><span>${a.peers.length} peer${a.peers.length === 1 ? "" : "s"}</span></div>
+      <div class="agent-bottom">
+        <code title="${safe(a.thread_id)}">${a.delivery === "owned" ? "One conversation across all runs" : safe(a.thread_id || "Chat not linked")}</code>
+        <div>${a.delivery === "desktop" ? `<button class="text-button" data-bootstrap="${safe(a.id)}">Connect reporting</button>` : ""}<a class="text-button" href="codex://threads/${safe(a.thread_id)}">Open desktop chat</a><button class="text-button" data-test-agent="${safe(a.id)}">Test agent</button><button class="text-button" data-edit-agent="${safe(a.id)}">Configure →</button></div>
+      </div>
+    </article>`;
+  }).join("") || empty("Build your agent team","Add a reviewer, a developer or a specialist. Every role is configurable.");
+}
+function renderAgentCards(container) {
+  const version = JSON.stringify([state.agents, state.agent_instruction_html]);
+  if (agentCardVersions.get(container) === version) return;
+  $(container).innerHTML = agentCards(container);
+  agentCardVersions.set(container, version);
 }
 function activityRows(rows) { return rows.map(a => `<div class="activity-row"><span class="activity-icon">◇</span><div><strong>${safe(a.action.replaceAll("."," · "))}</strong><p>${safe(a.detail)}</p></div><time>${safe(time(a.at))}</time></div>`).join("") || empty("A quiet starting point","New events and decisions will appear here."); }
 const statusNames = {pending:"Queued locally",dispatching:"Running",queued_in_codex:"Queued in Codex",reviewed:"Report received",awaiting_handoff:"Approved · manual handoff",blocked:"Needs attention",unknown:"Confirm delivery",superseded:"Obsolete · retained in history"};
@@ -30,7 +58,7 @@ function render() {
   $("#monitor-toggle").textContent = state.settings.monitor_enabled ? "Pause automation" : "Enable automation";
   $("#workspace-label").textContent = state.workspace_root;
   $("#notice").textContent = !state.ado_credential_configured ? "Start by configuring Azure DevOps and testing the Codex connection. Agents are paused until you enable them; no external actions are automatic." : blocked ? `${blocked} run${blocked === 1 ? " needs" : "s need"} attention. Review the queue before retrying; delivery is never assumed.` : "";
-  $("#overview-agents").innerHTML = agentCards(); $("#all-agents").innerHTML = agentCards();
+  renderAgentCards("#overview-agents"); renderAgentCards("#all-agents");
   $("#recent-activity").innerHTML = activityRows(state.activity.slice(0,5)); $("#activity-list").innerHTML = activityRows(state.activity);
   $("#jobs").innerHTML = state.jobs.map(j => `<article class="row-card"><div class="row-heading"><div><h3>${j.kind === "review" ? `${safe(j.value.repository_name)} · PR #${safe(j.value.pr)}` : safe(j.kind.replaceAll("_"," "))}</h3><p>${safe(state.agents.find(a => a.id === j.agent_id)?.name || j.agent_id)} · ${safe(time(j.created_at))}${j.value.head ? " · " + safe(j.value.head.slice(0,9)) : ""}</p></div><span class="pill ${["blocked","unknown"].includes(j.state) ? "warn" : j.state === "reviewed" ? "good" : ""}">${safe(j.state === "queued_in_codex" && state.deliveries?.find(d => d.job_id === j.id)?.mode === "steer" ? "Steered active chat" : (statusNames[j.state] || j.state))}</span></div>${j.detail ? `<p class="muted">${safe(j.detail.slice(0,250))}</p>` : ""}${state.deliveries?.find(d => d.job_id === j.id)?.state === "cleanup_pending" ? '<p class="muted">Native queued-copy cleanup pending; retry with Dispatch next.</p>' : ""}<div class="row-actions"><button class="secondary" data-open-job="${j.id}">View run</button>${j.value.url ? `<a class="text-button" href="${safe(j.value.url)}" target="_blank" rel="noopener noreferrer">Open PR ↗</a>` : ""}${j.state === "blocked" ? `<button class="text-button" data-retry="${j.id}">Retry connection →</button>` : ""}</div></article>`).join("") || empty("No review runs yet","Use Check ADO now after connecting, or let authenticated CI events enter the queue.");
   $("#proposals").innerHTML = state.proposals.map(p => `<article class="row-card"><div class="row-heading"><div><h3>${safe(p.value.title)}</h3><p>${safe(p.value.kind.replaceAll("_"," "))} · ${safe(p.value.target_agent_id)}</p></div><span class="pill ${p.state === "pending" ? "warn" : ""}">${safe(p.state.replaceAll("_"," "))}</span></div><div class="proposal-body">${safe(p.value.body)}</div>${p.state === "pending" ? `<div class="row-actions"><button class="primary" data-approve="${p.id}">Approve & queue</button><button class="secondary" data-reject="${p.id}">Reject</button></div>` : ""}</article>`).join("") || empty("No pending decisions","Agents can submit proposals. You can also prepare an exact action from a review.");
@@ -81,7 +109,7 @@ document.addEventListener("click", e => {
   if (button.dataset.reject) action(() => api(`/proposals/${button.dataset.reject}/reject`,{}));
   if (button.dataset.openJob) openRun(button.dataset.openJob);
 });
-$("#agent-form").addEventListener("submit",e => { e.preventDefault(); action(async () => { const f = e.target.elements; const value = Object.fromEntries(["id","name","role","thread_id","instructions","delivery","model"].map(k => [k,f[k].value.trim()])); value.enabled=f.enabled.checked; value.review_on_ci=f.review_on_ci.checked; value.repositories=list(f.repositories.value); value.peers=list(f.peers.value); value.workspaces=f.workspaces.value.split("\n").filter(x => x.trim()).map(line => { const [repository,...parts]=line.split("|"); if (!parts.length) throw Error("Use repository | absolute path for each workspace"); return {repository:repository.trim(),path:parts.join("|").trim()}; }); await api(`/agents/${value.id}`,value,"PUT"); $("#agent-dialog").close(); toast("Agent saved"); }); });
+$("#agent-form").addEventListener("submit",e => { e.preventDefault(); action(async () => { const f = e.target.elements; const value = Object.fromEntries(["id","name","role","thread_id","instructions","delivery","model"].map(k => [k,k === "instructions" ? f[k].value : f[k].value.trim()])); value.enabled=f.enabled.checked; value.review_on_ci=f.review_on_ci.checked; value.repositories=list(f.repositories.value); value.peers=list(f.peers.value); value.workspaces=f.workspaces.value.split("\n").filter(x => x.trim()).map(line => { const [repository,...parts]=line.split("|"); if (!parts.length) throw Error("Use repository | absolute path for each workspace"); return {repository:repository.trim(),path:parts.join("|").trim()}; }); await api(`/agents/${value.id}`,value,"PUT"); $("#agent-dialog").close(); toast("Agent saved"); }); });
 $("#ado-form").addEventListener("submit",e => { e.preventDefault(); action(async () => { const f=e.target.elements; const settings={...state.settings.ado,organization:f.organization.value.trim(),project:f.project.value.trim(),repositories:list(f.repositories.value),excluded_authors:list(f.excluded_authors.value),exclude_own:f.exclude_own.checked,enabled:f.enabled.checked}; await api("/connections/ado",{settings,pat:f.pat.value || null}); f.pat.value=""; toast("ADO connection saved. Test it before enabling automation."); }); });
 $("#codex-form").addEventListener("submit",e => { e.preventDefault(); action(async () => { await api("/settings",{...state.settings,codex_command:e.target.elements.command.value.trim(),desktop_node_command:e.target.elements.node_command.value.trim()},"PUT"); toast("Codex executable saved"); }); });
 $("#poll-form").addEventListener("submit",e => { e.preventDefault(); action(async () => { await api("/settings",{...state.settings,poll_seconds:Number(e.target.elements.poll_seconds.value),review_grace_seconds:Number(e.target.elements.review_grace_seconds.value),reconcile_periodically:e.target.elements.reconcile_periodically.checked},"PUT"); toast("Review timing saved"); }); });

@@ -111,3 +111,29 @@ its actual files, tests, external writes and limitations. The agent API and MCP 
 expose an approval tool. Codex permissions and the human's instructions still apply.
 
 See [Desktop delivery](desktop-delivery.md) for active steering, inbox claiming, native receipt cleanup and compatibility limits.
+
+## Standing human authorization
+
+Automatic events and peer messages grant no new permissions. A human can authorize
+an existing reviewer chat to assess, comment, approve and merge within a named
+objective, and keep the related backlog current. Record that scope explicitly in
+its Agent Desk instructions and in the chat. Already authorized actions do not
+require another approval proposal; actions outside the scope still do.
+
+A developer profile should name its current implementation objective, evidence
+requirements, isolated-worktree rules and review handoff. The reviewer independently
+checks exact revisions, CI, blockers and required policies before approving/merging;
+it cannot bypass policies or impersonate another reviewer. Completion of a PR is
+not automatic completion of a backlog item: reconcile literal acceptance and retain
+the remaining gaps. Keep thread IDs, peer allowlists, workspaces and credentials
+unchanged when editing a profile description.
+
+## Reading and editing instructions
+
+Overview and Agents show an expandable **Read instructions** panel. Headings,
+lists, links, tables and code are rendered as Markdown, with bounded scrolling for
+long profiles. Each panel retains its expanded state during the dashboard refresh.
+Configure continues to edit and save the original Markdown; agent prompts also use
+that original source. The display renderer disables raw HTML and inline images and
+rejects unsafe link schemes. Rendering does not grant any authority to instruction
+text or change the profile's permissions, peers or chat linkage.

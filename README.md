@@ -139,6 +139,7 @@ The dashboard is local-only; expose **8769**, never the control port **8768**.
 uv sync --frozen
 uv run ruff check .
 uv run ruff format --check .
+uv run playwright install chromium
 uv run pytest
 node --check src/agent_control/static/app.js
 uv build
