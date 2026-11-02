@@ -113,3 +113,5 @@ API or a read-only SQLite connection instead.
   sanitized. Basic webhook password and ADO PAT are separate credentials.
 - **Merged PR review skipped:** expected when a queued message outlives its PR. No new
   code assessment, tests or peer notification are needed.
+
+See [Desktop delivery](desktop-delivery.md) for active steering, inbox claiming, native receipt cleanup and compatibility limits.

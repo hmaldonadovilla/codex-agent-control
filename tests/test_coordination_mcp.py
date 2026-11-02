@@ -41,6 +41,7 @@ def test_coordination_has_scoped_context_but_no_approval_or_arbitrary_http_tool(
     assert {t["name"] for t in bridge.tools()} == {
         "agent_context",
         "get_run",
+        "next_run",
         "report_result",
         "send_peer_message",
         "propose_action",

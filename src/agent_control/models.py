@@ -48,6 +48,7 @@ class AdoSettings(Value):
 class Settings(Value):
     ado: AdoSettings = Field(default_factory=AdoSettings)
     codex_command: str = "codex"
+    desktop_node_command: str = ""
     monitor_enabled: bool = False
     reconcile_periodically: bool = False
     poll_seconds: Annotated[int, Field(ge=60, le=86400)] = 300

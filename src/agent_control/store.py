@@ -36,6 +36,10 @@ class Store:
                     kind TEXT NOT NULL, state TEXT NOT NULL, value TEXT NOT NULL,
                     prompt TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '',
                     created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS deliveries (
+                    job_id TEXT PRIMARY KEY, thread_id TEXT NOT NULL,
+                    message_id TEXT NOT NULL, mode TEXT NOT NULL, state TEXT NOT NULL,
+                    detail TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS proposals (
                     id TEXT PRIMARY KEY, state TEXT NOT NULL, value TEXT NOT NULL,
                     created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
@@ -50,6 +54,9 @@ class Store:
                     job_id TEXT NOT NULL, role TEXT NOT NULL, body TEXT NOT NULL,
                     created_at TEXT NOT NULL);
             """)
+            columns = {r[1] for r in db.execute("PRAGMA table_info(jobs)")}
+            if "claimed_at" not in columns:
+                db.execute("ALTER TABLE jobs ADD COLUMN claimed_at TEXT")
         self.path.chmod(0o600)
         # A process dying after send may already have queued its message. Reconcile manually.
         with self.db() as db:
@@ -206,12 +213,18 @@ class Store:
             raise ValueError("Job not found")
         return dict(row) | {"value": json.loads(row["value"])}
 
+    # One outstanding review wake-up per agent. Other PRs remain in the durable
+    # inbox; peer messages can still steer the active chat immediately.
+    REVIEW_SLOT = """NOT EXISTS (SELECT 1 FROM jobs active WHERE active.agent_id=jobs.agent_id
+        AND active.id!=jobs.id AND active.kind='review'
+        AND active.state IN ('dispatching','queued_in_codex','unknown'))"""
+
     def claim(self, review_grace_seconds: int = 0) -> dict | None:
         cutoff = (datetime.now(UTC) - timedelta(seconds=review_grace_seconds)).isoformat()
         with self.db() as db:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute(
-                "SELECT * FROM jobs WHERE state='pending' AND (kind != 'review' OR created_at <= ?) ORDER BY created_at LIMIT 1",
+                f"SELECT * FROM jobs WHERE state='pending' AND (kind != 'review' OR (created_at <= ? AND {self.REVIEW_SLOT})) ORDER BY CASE WHEN kind='message' THEN 0 ELSE 1 END, created_at LIMIT 1",
                 (cutoff,),
             ).fetchone()
             if row is None:
@@ -225,7 +238,7 @@ class Store:
     def review_delay(self, grace_seconds: int) -> float | None:
         with self.db() as db:
             row = db.execute(
-                "SELECT MIN(created_at) FROM jobs WHERE state='pending' AND kind='review'"
+                f"SELECT MIN(created_at) FROM jobs WHERE state='pending' AND kind='review' AND {self.REVIEW_SLOT}"
             ).fetchone()
         if row[0] is None:
             return None
@@ -239,6 +252,85 @@ class Store:
                 (state, detail[:24000], now(), job_id),
             )
         self.audit("job." + state, job_id)
+
+    def outstanding_reviews(self):
+        with self.db() as db:
+            rows = db.execute(
+                "SELECT id FROM jobs WHERE kind='review' AND state IN ('pending','queued_in_codex')"
+            ).fetchall()
+        return [self.job(row[0]) for row in rows]
+
+    def transition(self, job_id, expected, state, detail):
+        with self.db() as db:
+            changed = db.execute(
+                "UPDATE jobs SET state=?,detail=?,updated_at=? WHERE id=? AND state=?",
+                (state, detail, now(), job_id, expected),
+            ).rowcount
+        if changed:
+            self.audit("job." + state, job_id)
+        return bool(changed)
+
+    def record_delivery(self, job_id, receipt):
+        with self.db() as db:
+            db.execute(
+                "INSERT INTO deliveries VALUES (?,?,?,?,?,?,?)",
+                (
+                    job_id,
+                    receipt["thread_id"],
+                    receipt["message_id"],
+                    receipt.get("mode", "queue"),
+                    "accepted",
+                    "",
+                    now(),
+                ),
+            )
+
+    def deliveries(self):
+        with self.db() as db:
+            return [
+                dict(r) for r in db.execute("SELECT * FROM deliveries ORDER BY updated_at DESC")
+            ]
+
+    def delivery_state(self, job_id, state, detail=""):
+        with self.db() as db:
+            db.execute(
+                "UPDATE deliveries SET state=?,detail=?,updated_at=? WHERE job_id=?",
+                (state, detail, now(), job_id),
+            )
+
+    def finish_report(self, job_id, summary):
+        with self.db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT state,detail FROM jobs WHERE id=?", (job_id,)).fetchone()
+            if row["state"] == "reviewed":
+                return False  # a delayed duplicate must never replace the actual report
+            if row["state"] not in {"queued_in_codex", "awaiting_handoff"}:
+                raise ValueError("Only a delivered run can receive a completion report")
+            db.execute(
+                "UPDATE jobs SET state='reviewed',detail=?,updated_at=? WHERE id=?",
+                (summary, now(), job_id),
+            )
+        self.audit("job.reviewed", job_id)
+        return True
+
+    def claim_inbox(self, agent_id, grace_seconds):
+        cutoff = (datetime.now(UTC) - timedelta(seconds=grace_seconds)).isoformat()
+        with self.db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                """SELECT id FROM jobs WHERE agent_id=? AND claimed_at IS NULL
+                AND (state='queued_in_codex' OR (state='pending' AND
+                    (kind!='review' OR created_at<=?)))
+                ORDER BY CASE WHEN state='queued_in_codex' THEN 0 ELSE 1 END,created_at LIMIT 1""",
+                (agent_id, cutoff),
+            ).fetchone()
+            if not row:
+                return None
+            db.execute(
+                "UPDATE jobs SET state='dispatching',claimed_at=?,updated_at=? WHERE id=?",
+                (now(), now(), row[0]),
+            )
+        return self.job(row[0])
 
     def proposals(self) -> list[dict]:
         with self.db() as db:
