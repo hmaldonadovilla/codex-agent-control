@@ -34,6 +34,8 @@ and UI separate. Persist events before acknowledgement, deduplicate jobs by agen
 exact PR source/target revisions, and revalidate revisions before dispatch/approval.
 An uncertain dispatch must not be automatically retried.
 
-Use `uv run pytest` and `uv run ruff check .`. Use synthetic credentials in tests.
+Use `uv run pytest` and `uv run ruff check .`. Install the reviewed browser with
+`uv run playwright install chromium` before the UI tests (CI installs system
+dependencies too). Use synthetic credentials in tests.
 Do not register live ADO hooks, publish the app or alter another chat's checkout as
 part of tests. Preserve the user's active development work.

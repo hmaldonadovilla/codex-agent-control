@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Render agent instructions as safe Markdown in expandable, keyboard-accessible panels; retain the original Markdown for editing and agent delivery.
+
 - Respect explicit standing human authorization in review wake-ups; retain default permission boundaries and mandatory review/CI/policy checks.
 
 - Steer relevant messages into existing active desktop chats through a versioned native IPC adapter; retain queue fallback for idle chats.

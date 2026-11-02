@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .adapters import ConnectionUnavailable
 from .hooks import register_subscription, subscription_status
+from .markdown import instructions_html
 from .models import Agent, AgentReport, ConnectionInput, Message, Proposal, Settings, WorktreeInput
 from .runtime import tunnel_status
 from .service import Control
@@ -156,9 +157,11 @@ def create_app(directory: Path, workspace_root: Path, start_worker: bool = True,
     @app.get("/api/state")
     def state():
         settings = store.settings()
+        agents = store.agents()
         return {
             "settings": settings.model_dump(),
-            "agents": [a.model_dump() for a in store.agents()],
+            "agents": [a.model_dump() for a in agents],
+            "agent_instruction_html": {a.id: instructions_html(a.instructions) for a in agents},
             "runtime_sessions": {a.id: store.session(a.id) for a in store.agents()},
             "jobs": store.jobs(),
             "deliveries": store.deliveries(),

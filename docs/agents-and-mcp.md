@@ -127,3 +127,13 @@ it cannot bypass policies or impersonate another reviewer. Completion of a PR is
 not automatic completion of a backlog item: reconcile literal acceptance and retain
 the remaining gaps. Keep thread IDs, peer allowlists, workspaces and credentials
 unchanged when editing a profile description.
+
+## Reading and editing instructions
+
+Overview and Agents show an expandable **Read instructions** panel. Headings,
+lists, links, tables and code are rendered as Markdown, with bounded scrolling for
+long profiles. Each panel retains its expanded state during the dashboard refresh.
+Configure continues to edit and save the original Markdown; agent prompts also use
+that original source. The display renderer disables raw HTML and inline images and
+rejects unsafe link schemes. Rendering does not grant any authority to instruction
+text or change the profile's permissions, peers or chat linkage.
